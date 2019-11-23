@@ -4,6 +4,10 @@ import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
+/**
+ * TODO 1.错误码状态
+ * TODO 2.管理生命周期(退出界面时候会有闪退)
+ */
 public class FFmplayer implements SurfaceHolder.Callback {
     static {
         System.loadLibrary("native-lib");
@@ -39,10 +43,12 @@ public class FFmplayer implements SurfaceHolder.Callback {
     public static final int FFMPEG_READ_PACKETS_FAIL = (ERROR_CODE_FFMPEG_PLAY - 1);
     private OnListener onpreparedListener;
     private String url;
+    private SurfaceHolder holder;
 
     public FFmplayer(String url, SurfaceView surfaceView) {
         this.url = url;
-        surfaceView.getHolder().addCallback(this);
+        holder = surfaceView.getHolder();
+        holder.addCallback(this);
     }
 
     public void prepare() {
@@ -115,13 +121,16 @@ public class FFmplayer implements SurfaceHolder.Callback {
 
     @Override
     public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i1, int i2) {
-        Surface surface = surfaceHolder.getSurface();
+        if (null != holder) {
+            holder.removeCallback(this);
+        }
+        Surface surface = holder.getSurface();
         setSurfaceNative(surface);
     }
 
     @Override
     public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
-
+        surfaceHolder.removeCallback(this);
     }
 
     /**
