@@ -61,6 +61,10 @@ public class FFmplayer implements SurfaceHolder.Callback {
         _release();
     }
 
+    public void seek(int progress) {
+        seekNative(progress);
+    }
+
     public void onPrepare() {
         if (onpreparedListener != null) {
             this.onpreparedListener.onPrepared();
@@ -79,7 +83,6 @@ public class FFmplayer implements SurfaceHolder.Callback {
         }
     }
 
-
     /**
      * 给jni反射调用的
      */
@@ -91,6 +94,10 @@ public class FFmplayer implements SurfaceHolder.Callback {
 
     public void setListener(OnListener onpreparedListener) {
         this.onpreparedListener = onpreparedListener;
+    }
+
+    public int getDuration() {
+        return getDurationNative();
     }
 
     //相关回调监听
@@ -117,7 +124,6 @@ public class FFmplayer implements SurfaceHolder.Callback {
 
     }
 
-
     /**
      * native methods
      **/
@@ -128,5 +134,10 @@ public class FFmplayer implements SurfaceHolder.Callback {
     private native void _stop();
 
     private native void _release();
+
     private native void setSurfaceNative(Surface surface);
+
+    private native int getDurationNative();
+
+    private native void seekNative(int progress);
 }

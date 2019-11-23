@@ -4,8 +4,9 @@
 
 #include "AudioChannel.h"
 
-AudioChannel::AudioChannel(AVCodecContext *context, int stream_index) : BaseChannel(context,
-                                                                                    stream_index) {
+AudioChannel::AudioChannel(AVCodecContext *context, int stream_index, AVRational time_base)
+        : BaseChannel(context,
+                      stream_index, time_base) {
     //初始化 缓冲 out_buffers
     //44100 16bit 双声道
     out_channels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
@@ -22,7 +23,11 @@ AudioChannel::AudioChannel(AVCodecContext *context, int stream_index) : BaseChan
 }
 
 AudioChannel::~AudioChannel() {
-
+    if (swr_ctx) {
+        swr_free(&swr_ctx);
+        swr_ctx = 0;
+    }
+    DELETE(out_buffers);
 }
 
 void *task_audio_decode(void *args) {
@@ -42,8 +47,8 @@ void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context) {
     AudioChannel *audio_channel = (AudioChannel *) (context);
     int pcm_size = audio_channel->getPCM();
     //缓冲数组
-    if(pcm_size>0)
-    (*bq)->Enqueue(bq, audio_channel->out_buffers, pcm_size);
+    if (pcm_size > 0)
+        (*bq)->Enqueue(bq, audio_channel->out_buffers, pcm_size);
 }
 
 /**
@@ -59,13 +64,19 @@ int AudioChannel::getPCM() {
         if (!ret)continue;
         //音频重采样
         int dst_nb_samples = av_rescale_rnd(swr_get_delay(swr_ctx, frame->sample_rate) +
-                                                    frame->nb_samples, out_sample_rate, frame->sample_rate,
+                                            frame->nb_samples, out_sample_rate, frame->sample_rate,
                                             AV_ROUND_UP);
         int samples_per_channel = swr_convert(swr_ctx, &out_buffers, dst_nb_samples,
                                               (const uint8_t **) frame->data,
                                               frame->nb_samples);
 //        pcm_data_size = samples_per_channel*out_sample_size;获取每个声道的数据
-        pcm_data_size = samples_per_channel * out_sample_size * out_channels;;
+        pcm_data_size = samples_per_channel * out_sample_size * out_channels;
+        //获取音频当前时间
+        audio_time = frame->best_effort_timestamp * av_q2d(time_base);
+        //回调进度
+        if (jni_callback_helper) {
+            jni_callback_helper->onProgress(THREAD_CHILD, audio_time);
+        }
         break;
     }//end while
     releaseAVFrame(&frame);
@@ -84,6 +95,11 @@ void AudioChannel::start() {
 }
 
 void AudioChannel::stop() {
+    isPlaying = 0;
+    packets.setWork(0);
+    frames.setWork(0);
+    pthread_join(pid_audio_decode, 0);
+    pthread_join(pid_audio_play, 0);
     //release
     //change to stop
     if (bqPlayerPlay) {
@@ -110,6 +126,11 @@ void AudioChannel::stop() {
 void AudioChannel::_decode() {
     AVPacket *packet;
     while (isPlaying) {
+        if (isPlaying && frames.size() > 100) {
+            //等待消费
+            av_usleep(10 * 1000);
+            continue;
+        }
         int ret = packets.pop(packet);
         if (!isPlaying) {
             //中途停止。
@@ -123,18 +144,20 @@ void AudioChannel::_decode() {
         if (ret != 0) {
             break;
         }
+        releaseAVPacket(&packet);
         AVFrame *frame = av_frame_alloc();
         ret = avcodec_receive_frame(codecContext, frame);
         if (ret == AVERROR(EAGAIN)) {
             continue;
         } else if (ret != 0) {
+            releaseAVFrame(&frame);
             break;
         }
         frames.push(frame);
     }
     releaseAVPacket(&packet);
-    LOGE("音频帧解码完成");
 }
+
 void AudioChannel::_play() {
     /**
   * 1、创建引擎并获取引擎接口
@@ -247,6 +270,8 @@ void AudioChannel::_play() {
      */
     bqPlayerCallback(bqPlayerBufferQueue, this);
 }
+
+
 //void AudioChannel::_play() {
 //    // create engine
 //    SLresult result = 0;

@@ -9,6 +9,7 @@
 #include <android/log.h>
 
 #include "macro.h"
+#include "JniCallbackHelper.h"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -16,8 +17,10 @@ extern "C" {
 
 class BaseChannel {
 public:
-    BaseChannel(AVCodecContext *codecContext, int stream_index) : stream_index(stream_index),
-                                                                  codecContext(codecContext) {
+    BaseChannel(AVCodecContext *codecContext, int stream_index, AVRational time_base)
+            : stream_index(stream_index),
+              codecContext(codecContext),
+              time_base(time_base) {
         packets.setReleaseCallback(releaseAVPacket);
         frames.setReleaseCallback(releaseAVFrame);
     }
@@ -41,11 +44,19 @@ public:
         }
     }
 
+    void setJniCallbackHelper(JniCallbackHelper *jni_callback_helper) {
+        this->jni_callback_helper = jni_callback_helper;
+    };
+
+
     int stream_index;
     SafeQueue<AVPacket *> packets;
     SafeQueue<AVFrame *> frames;
     bool isPlaying = 0;
     AVCodecContext *codecContext = 0;
+    AVRational time_base;
+    double audio_time;
+    JniCallbackHelper *jni_callback_helper = 0;
 };
 
 #endif //FFMPLAYER_BASECHANNEL_H

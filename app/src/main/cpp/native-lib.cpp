@@ -57,19 +57,30 @@ Java_com_jzy_ffmplayer_FFmplayer__1prepare(JNIEnv *env, jobject instance, jstrin
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_jzy_ffmplayer_FFmplayer__1start(JNIEnv *env, jobject instance) {
-    player->start();
+    if (player) {
+        player->start();
+    }
 }
 
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_jzy_ffmplayer_FFmplayer__1stop(JNIEnv *env, jobject instance) {
-
+    if (player) {
+        player->stop();
+    }
 }
 
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_jzy_ffmplayer_FFmplayer__1release(JNIEnv *env, jobject instance) {
+    pthread_mutex_lock(&mutex);
+    if (window) {
+        ANativeWindow_release(window);
+        window = 0;
+    }
 
+    pthread_mutex_unlock(&mutex);
+    DELETE(player);
 }
 
 extern "C"
@@ -84,4 +95,19 @@ Java_com_jzy_ffmplayer_FFmplayer_setSurfaceNative(JNIEnv *env, jobject instance,
     window = ANativeWindow_fromSurface(env, surface);
     pthread_mutex_unlock(&mutex);
 
+}
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_jzy_ffmplayer_FFmplayer_getDurationNative(JNIEnv *env, jobject instance) {
+    if (player) {
+        return player->getDuration();
+    }
+    return 0;
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_jzy_ffmplayer_FFmplayer_seekNative(JNIEnv *env, jobject instance, jint progress) {
+    if (player) {
+        player->seek(progress);
+    }
 }

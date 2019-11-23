@@ -5,9 +5,13 @@
 #include <pthread.h>
 
 using namespace std;
+
 template<typename T>
 class SafeQueue {
     typedef void (*ReleaseCallback)(T *);
+
+    typedef void (*SyncCallback)(queue<T> &);
+
 public:
     SafeQueue() {
         //初始化
@@ -26,9 +30,9 @@ public:
             //工作状态
             q.push(value);
             pthread_cond_signal(&cond);
-        } else{
+        } else {
             //非工作状态，释放value，不知道如何释放
-            if(releaseCallback){
+            if (releaseCallback) {
                 releaseCallback(&value);
             }
         }
@@ -38,11 +42,11 @@ public:
     int pop(T &value) {
         int ret = 0;
         pthread_mutex_lock(&mutex);
-        while(work && q.empty()){
+        while (work && q.empty()) {
             //如果工作状态，队列中没有数据
             pthread_cond_wait(&cond, &mutex);
         }
-        if(!q.empty()){
+        if (!q.empty()) {
             value = q.front();
             q.pop();
             ret = 1;
@@ -72,7 +76,7 @@ public:
         for (int i = 0; i < size; ++i) {
             //循环释放队列中的数据
             T value = q.front();
-            if(releaseCallback){
+            if (releaseCallback) {
                 releaseCallback(&value);
             }
             q.pop();
@@ -80,15 +84,30 @@ public:
         pthread_mutex_unlock(&mutex);
     }
 
-    void setReleaseCallback(ReleaseCallback releaseCallback){
+    /**
+     * 同步操作
+     */
+    void sync() {
+        pthread_mutex_lock(&mutex);
+        syncCallback(q);
+        pthread_mutex_unlock(&mutex);
+    }
+
+    void setReleaseCallback(ReleaseCallback releaseCallback) {
         this->releaseCallback = releaseCallback;
     }
+
+    void setSyncCallback(SyncCallback syncCallback) {
+        this->syncCallback = syncCallback;
+    }
+
 private:
-    queue <T> q;
+    queue<T> q;
     pthread_mutex_t mutex;
     pthread_cond_t cond;
     int work = 0;
     ReleaseCallback releaseCallback;
+    SyncCallback syncCallback;
 };
 
 #endif //FFMPLAYER_SAFE_QUEUE_H

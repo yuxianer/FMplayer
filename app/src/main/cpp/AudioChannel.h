@@ -12,11 +12,12 @@
 
 extern "C" {
 #include "libswresample/swresample.h"
+#include <libavutil/time.h>
 }
 
 class AudioChannel : public BaseChannel {
 public:
-    AudioChannel(AVCodecContext *codecContext, int stream_index);
+    AudioChannel(AVCodecContext *codecContext, int stream_index, AVRational time_base);
 
     ~AudioChannel();
 
@@ -32,10 +33,12 @@ public:
 
     uint8_t *out_buffers = 0;
 
-    int out_sample_rate ;
-    int out_channels ;
-    int out_sample_size ;
-    int out_buffers_size ;
+    int out_sample_rate;
+    int out_channels;
+    int out_sample_size;
+    int out_buffers_size;
+
+
 private:
     pthread_t pid_audio_decode;
     pthread_t pid_audio_play;

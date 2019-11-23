@@ -15,9 +15,11 @@
 
 extern "C" {
 #include <libavformat/avformat.h>
+#include <libavutil/time.h>
 }
 
 class FFmplayer {
+    friend void *thread_stop_task(void *args);
 public:
     FFmplayer(JniCallbackHelper *p_helper, const char *_url);
 
@@ -33,20 +35,29 @@ public:
 
     void stop();
 
+
     void release();
 
     void setRenderCallback(RenderCallback renderCallback);
+
+    int getDuration();
+
+    void seek(int progress);
+
 
 private:
     char *url = 0;
     pthread_t pid_task_prepare;
     pthread_t pid_task_start;
-    JniCallbackHelper *jni_callback_helper = 0;
+    pthread_t pid_task_stop;
+    JniCallbackHelper *jni_callback_helper;
     AudioChannel *audio_channel = 0;
     VideoChannnel *video_channel = 0;
     bool isPlaying = 0;
     AVFormatContext *formatContext = 0;
-    RenderCallback renderCallback = 0;
+    RenderCallback renderCallback;
+    int duration = 0;
+    pthread_mutex_t seek_mutex;
 };
 
 
