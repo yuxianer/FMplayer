@@ -42,6 +42,7 @@ void FFmplayer::start() {
         video_channel->start();
     }
     if (audio_channel) {
+        LOGE("音频开启");
         audio_channel->start();
     }
     pthread_create(&pid_task_start, 0, thread_start_task, this);
@@ -79,7 +80,6 @@ void FFmplayer::_prepare() {
     av_dict_free(&dictionary);
     if (ret) {
         //        jni_callback_helper->onError(THREAD_CHILD,);
-
         return;
     }
     /**
@@ -89,7 +89,6 @@ void FFmplayer::_prepare() {
 
     if (ret < 0) {
         //        jni_callback_helper->onError(THREAD_CHILD,);
-
         return;
     }
     int64_t duration = formatContext->duration / AV_TIME_BASE;//获取的 duration 单位是：秒
@@ -173,14 +172,17 @@ void FFmplayer::_start() {
         int ret = av_read_frame(formatContext, packet);
         if (!ret) {
             if (video_channel && video_channel->stream_index == packet->stream_index) {
+                //视频帧
                 video_channel->packets.push(packet);
             } else if (audio_channel && audio_channel->stream_index == packet->stream_index) {
-//         TODO       audio_channel->packets.push(packet);
+                //音频帧
+                audio_channel->packets.push(packet);
             }
         } else if (ret == EOF) {
             //读取完毕
-
+            //可以设置停止或者重新播放
         } else {
+            //获取帧错误。
             break;
         }
 

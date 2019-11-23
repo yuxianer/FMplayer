@@ -44,10 +44,7 @@ void VideoChannnel::video_decode() {
     AVPacket *packet;
     while (isPlaying) {
         int ret = packets.pop(packet);
-        if (!isPlaying) {
-            //中途停止。
-            break;
-        }
+        if (!isPlaying)break;
         if (!ret) {
             continue;
         }

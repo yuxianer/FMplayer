@@ -6,6 +6,9 @@
 #define FFMPLAYER_BASECHANNEL_H
 
 #include "safe_queue.h"
+#include <android/log.h>
+
+#include "macro.h"
 
 extern "C" {
 #include <libavcodec/avcodec.h>

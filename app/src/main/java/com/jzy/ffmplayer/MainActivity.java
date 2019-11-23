@@ -13,7 +13,7 @@ import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
     private static final String path = Environment.getExternalStorageDirectory().getAbsolutePath() +
-            "/test.mp4";
+            "/hello.mp4";
     private SurfaceView surfaceView;
 
     @Override
