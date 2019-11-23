@@ -6,10 +6,17 @@
 #define FFMPLAYER_AUDIOCHANNEL_H
 
 
-class AudioChannel {
+#include "BaseChannel.h"
+
+class AudioChannel : public BaseChannel {
 public:
-    AudioChannel();
+    AudioChannel(AVCodecContext *codecContext, int stream_index);
+
     ~AudioChannel();
+
+    void start();
+
+    void stop();
 };
 
 

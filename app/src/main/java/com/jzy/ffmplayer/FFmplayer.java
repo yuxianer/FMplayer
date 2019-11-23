@@ -1,6 +1,10 @@
 package com.jzy.ffmplayer;
 
-public class FFmplayer {
+import android.view.Surface;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
+
+public class FFmplayer implements SurfaceHolder.Callback {
     static {
         System.loadLibrary("native-lib");
     }
@@ -36,8 +40,9 @@ public class FFmplayer {
     private OnListener onpreparedListener;
     private String url;
 
-    public FFmplayer(String url) {
+    public FFmplayer(String url, SurfaceView surfaceView) {
         this.url = url;
+        surfaceView.getHolder().addCallback(this);
     }
 
     public void prepare() {
@@ -67,6 +72,7 @@ public class FFmplayer {
             this.onpreparedListener.onError(errcode);
         }
     }
+
     public void onProgress(int progress) {
         if (onpreparedListener != null) {
             this.onpreparedListener.onProgress(progress);
@@ -77,8 +83,8 @@ public class FFmplayer {
     /**
      * 给jni反射调用的
      */
-    public void onPrepared(){
-        if (null != this.onpreparedListener){
+    public void onPrepared() {
+        if (null != this.onpreparedListener) {
             this.onpreparedListener.onPrepared();
         }
     }
@@ -87,6 +93,7 @@ public class FFmplayer {
         this.onpreparedListener = onpreparedListener;
     }
 
+    //相关回调监听
     interface OnListener {
         void onPrepared();
 
@@ -94,6 +101,22 @@ public class FFmplayer {
 
         void onProgress(int progress);
     }
+
+    @Override
+    public void surfaceCreated(SurfaceHolder surfaceHolder) {
+    }
+
+    @Override
+    public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i1, int i2) {
+        Surface surface = surfaceHolder.getSurface();
+        setSurfaceNative(surface);
+    }
+
+    @Override
+    public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
+
+    }
+
 
     /**
      * native methods
@@ -105,4 +128,5 @@ public class FFmplayer {
     private native void _stop();
 
     private native void _release();
+    private native void setSurfaceNative(Surface surface);
 }

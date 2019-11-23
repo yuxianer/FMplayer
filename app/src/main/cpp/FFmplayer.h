@@ -4,6 +4,7 @@
 
 #ifndef FFMPLAYER_FFMPLAYER_H
 #define FFMPLAYER_FFMPLAYER_H
+
 #include <cstring>
 #include <pthread.h>
 #include "AudioChannel.h"
@@ -15,23 +16,37 @@
 extern "C" {
 #include <libavformat/avformat.h>
 }
+
 class FFmplayer {
 public:
-    FFmplayer(JniCallbackHelper *p_helper,const char *_url);
+    FFmplayer(JniCallbackHelper *p_helper, const char *_url);
 
     ~FFmplayer();
+
     void prepare();
+
     void _prepare();
+
     void start();
+
+    void _start();
+
     void stop();
+
     void release();
+
+    void setRenderCallback(RenderCallback renderCallback);
+
 private:
     char *url = 0;
-    pthread_t task_prepare ;
-    pthread_t task_start ;
-    JniCallbackHelper *jni_callback_helper=0;
-    AudioChannel *audio_channel =0;
-    VideoChannnel *video_channel =0;
+    pthread_t pid_task_prepare;
+    pthread_t pid_task_start;
+    JniCallbackHelper *jni_callback_helper = 0;
+    AudioChannel *audio_channel = 0;
+    VideoChannnel *video_channel = 0;
+    bool isPlaying = 0;
+    AVFormatContext *formatContext = 0;
+    RenderCallback renderCallback = 0;
 };
 
 

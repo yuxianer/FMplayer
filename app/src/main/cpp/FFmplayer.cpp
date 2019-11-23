@@ -23,14 +23,28 @@ void *(thread_prepare_task)(void *args) {
     return 0;
 }
 
+//开始线程执行函数
+void *(thread_start_task)(void *args) {
+    FFmplayer *player = (FFmplayer *) (args);
+    player->_start();
+    return 0;
+}
+
 //进行解封装
 //耗时操作 需要子线程
 void FFmplayer::prepare() {
-    pthread_create(&task_prepare, 0, thread_prepare_task, this);
+    pthread_create(&pid_task_prepare, 0, thread_prepare_task, this);
 }
 
 void FFmplayer::start() {
-
+    isPlaying = 1;
+    if (video_channel) {
+        video_channel->start();
+    }
+    if (audio_channel) {
+        audio_channel->start();
+    }
+    pthread_create(&pid_task_start, 0, thread_start_task, this);
 }
 
 void FFmplayer::stop() {
@@ -49,7 +63,7 @@ void FFmplayer::_prepare() {
      * 1，打开媒体地址（文件路径/直播地址）
      */
     //封装了媒体流的格式信息
-    AVFormatContext *formatContext = avformat_alloc_context();
+    formatContext = avformat_alloc_context();
     //字典（键值对）
     AVDictionary *dictionary = 0;
     //设置超时（5秒）
@@ -93,14 +107,12 @@ void FFmplayer::_prepare() {
          */
         AVCodecParameters *codecParameters = stream->codecpar;
 
-
         /**
          * 6, 通过流的编解码参数中编解码id，来获取当前流的解码器
          */
         AVCodec *codec = avcodec_find_decoder(codecParameters->codec_id);
         if (!codec) {
             //        jni_callback_helper->onError(THREAD_CHILD,);
-
             return;
         }
         /**
@@ -109,7 +121,6 @@ void FFmplayer::_prepare() {
         AVCodecContext *codecContext = avcodec_alloc_context3(codec);
         if (!codecContext) {
             //        jni_callback_helper->onError(THREAD_CHILD,);
-
             return;
         }
         /**
@@ -118,7 +129,6 @@ void FFmplayer::_prepare() {
         ret = avcodec_parameters_to_context(codecContext, codecParameters);
         if (ret < 0) {
             //        jni_callback_helper->onError(THREAD_CHILD,);
-
             return;
         }
         /**
@@ -127,7 +137,6 @@ void FFmplayer::_prepare() {
         ret = avcodec_open2(codecContext, codec, 0);
         if (ret) {
             //        jni_callback_helper->onError(THREAD_CHILD,);
-
             return;
         }
         AVRational time_base = stream->time_base;
@@ -136,9 +145,11 @@ void FFmplayer::_prepare() {
          */
         if (codecParameters->codec_type == AVMEDIA_TYPE_AUDIO) {
             //音频
-
+            audio_channel = new AudioChannel(codecContext, stream_index);
         } else if (codecParameters->codec_type == AVMEDIA_TYPE_VIDEO) {
-            audio_channel = new AudioChannel();
+            video_channel = new VideoChannnel(codecContext, stream_index);
+            //设置渲染回调
+            video_channel->setRenderCallback(renderCallback);
         }
     }//end for
     if (!audio_channel && !video_channel) {
@@ -151,4 +162,34 @@ void FFmplayer::_prepare() {
     if (jni_callback_helper) {
         jni_callback_helper->onPrepared(THREAD_CHILD);
     }
+}
+
+/**
+ * 解码函数
+ */
+void FFmplayer::_start() {
+    while (isPlaying) {
+        AVPacket *packet = av_packet_alloc();
+        int ret = av_read_frame(formatContext, packet);
+        if (!ret) {
+            if (video_channel && video_channel->stream_index == packet->stream_index) {
+                video_channel->packets.push(packet);
+            } else if (audio_channel && audio_channel->stream_index == packet->stream_index) {
+//         TODO       audio_channel->packets.push(packet);
+            }
+        } else if (ret == EOF) {
+            //读取完毕
+
+        } else {
+            break;
+        }
+
+    }//end while
+    isPlaying = 0;
+    video_channel->stop();
+    audio_channel->stop();
+}
+
+void FFmplayer::setRenderCallback(RenderCallback renderCallback) {
+    this->renderCallback = renderCallback;
 }

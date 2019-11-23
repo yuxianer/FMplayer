@@ -4,10 +4,18 @@
 
 #include "AudioChannel.h"
 
-AudioChannel::AudioChannel() {
+AudioChannel::AudioChannel(AVCodecContext *context,int stream_index) : BaseChannel(context,stream_index){
 
 }
 
 AudioChannel::~AudioChannel() {
+
+}
+
+void AudioChannel::start() {
+
+}
+
+void AudioChannel::stop() {
 
 }
