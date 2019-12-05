@@ -20,7 +20,7 @@ void WindowRender(uint8_t *src_data, int width, int height, int src_lineSize) {
     pthread_mutex_lock(&mutex);
     if (!window) {
         pthread_mutex_unlock(&mutex);
-
+         return;
     }
     ANativeWindow_setBuffersGeometry(window, (uint32_t) width, (uint32_t) height,
                                      WINDOW_FORMAT_RGBA_8888);
